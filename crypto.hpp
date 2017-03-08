@@ -1,6 +1,6 @@
 
-#ifndef HPP_INCLUDED
-#define HPP_INCLUDED
+#ifndef CRYPTO_HPP_INCLUDED
+#define CRYPTO_HPP_INCLUDED
 
 #include <algorithm>
 #include <array>
@@ -8,14 +8,65 @@
 #include <cstdint>
 #include <functional>
 #include <random>
-#include <experimental/optional>
-#include <experimental/string_view>
+#include <string>
+
+#if _MSC_VER >= 1910
+#include <string_view>
+#define CRYPTO_HPP_HAVE_STD_STRING_VIEW
+#include <optional>
+#define CRYPTO_HPP_HAVE_STD_OPTIONAL
+#endif
+
+#ifdef __has_include
+#    if __has_include(<string_view>)
+#        include <string_view>
+#        define CRYPTO_HPP_HAVE_STD_STRING_VIEW
+#    elif __has_include(<experimental/string_view>)
+#        include <experimental/string_view>
+#        define CRYPTO_HPP_HAVE_STD_EXP_STRING_VIEW
+#    endif
+#endif // __has_include
+
+#ifdef __has_include
+#    if __has_include(<optional>)
+#        include <optional>
+#        define CRYPTO_HPP_HAVE_STD_OPTIONAL
+#    elif __has_include(<experimental/optional>)
+#        include <experimental/optional>
+#        define CRYPTO_HPP_HAVE_STD_EXP_OPTIONAL
+#    elif __has_include(<boost/optional/optional.hpp>)
+#        include <boost/optional/optional.hpp>
+#        define CRYPTO_HPP_HAVE_BOOST_OPTIONAL
+#    endif
+#endif
+
+#ifdef __MINGW32__
+#include <boost/random/random_device.hpp>
+#endif
 
 namespace crypto {
 
+#if defined(CRYPTO_HPP_HAVE_STD_STRING_VIEW)
+using string_view = std::string_view;
+#elif defined(CRYPTO_HPP_HAVE_STD_EXP_STRING_VIEW)
+using string_view = std::experimental::string_view;
+#else
+using string_view = const std::string&;
+#endif
+
+#if defined(CRYPTO_HPP_HAVE_STD_OPTIONAL)
+using std::optional;
+using std::nullopt;
+#elif defined(CRYPTO_HPP_HAVE_STD_EXP_OPTIONAL)
 using std::experimental::optional;
 using std::experimental::nullopt;
-using std::experimental::string_view;
+#elif defined(CRYPTO_HPP_HAVE_BOOST_OPTIONAL)
+using boost::optional;
+const auto nullopt = boost::none;
+#else
+#error "std::optional, std::experimental::optional or boost::optional required"
+#endif
+
 using uint8_t = std::uint8_t;
 using uint32_t = std::uint32_t;
 using uint64_t = std::uint64_t;
@@ -882,8 +933,14 @@ inline int sign_ed25519_tweet_open(uint8_t *m,uint64_t *mlen,const uint8_t *sm,u
 
 inline auto& get_default_random_engine()
 {
-    using engine_t = std::independent_bits_engine<std::random_device, 8, std::uint8_t>;
-    thread_local engine_t engine{};
+#ifdef __MINGW32__
+    using random_device = boost::random::random_device;
+#else
+    using random_device = std::random_device;
+#endif
+    //using engine_t = std::independent_bits_engine<random_device, 8, std::uint8_t>;
+    //thread_local engine_t engine{};
+    thread_local random_device engine{};
     return engine;
 }
 
