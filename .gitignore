@@ -1,0 +1,13 @@
+
+build*/
+
+# QtCreator
+CMakeLists.txt.user
+
+# CLion
+.idea/
+cmake-build-*/
+
+# Visual Studio
+.vs/
+CMakeSettings.json
